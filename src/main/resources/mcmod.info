@@ -1,14 +1,14 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "airlockapi",
+  "name": "AirlockAPI",
+  "description": "API for Cleanroom mods.",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
   "authorList": ["CleanroomMC"],
-  "credits": "Authors of this project",
+  "credits": "Rongmario",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []
