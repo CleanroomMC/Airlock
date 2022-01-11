@@ -13,7 +13,7 @@ public final class EntityCollisionContext {
 	public static final EntityCollisionContext EMPTY = new EntityCollisionContext(null, false, ItemStack.EMPTY);
 
 	public static EntityCollisionContext of(Entity entity) {
-		return new EntityCollisionContext(entity);
+		return entity == null ? EMPTY : new EntityCollisionContext(entity);
 	}
 
 	@Nullable private final Entity entity;
