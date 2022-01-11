@@ -17,7 +17,7 @@ public class BlockMixin implements AirlockBlock {
 	@Nullable
 	@Override
 	public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess worldIn, BlockPos pos, EntityCollisionContext ctx) {
-		return state.getBoundingBox(worldIn, pos);
+		return state.getCollisionBoundingBox(worldIn, pos);
 	}
 
 }
