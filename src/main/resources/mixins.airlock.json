@@ -1,0 +1,11 @@
+{
+	"package": "io.github.cleanroommc.airlock",
+	"refmap": "mixins.airlock.refmap.json",
+	"target": "@env(DEFAULT)",
+	"minVersion": "0.8",
+	"compatibilityLevel": "JAVA_8",
+	"mixins": [
+		"block.mixins.BlockMixin",
+		"block.mixins.BlockStateContainerMixin"
+	]
+}
