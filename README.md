@@ -1,3 +1,3 @@
 # Airlock
 
-***API for Cleanroom mods***
+***Cleanroom's own, non-overrated, API.***
