@@ -1,4 +1,4 @@
-package com.cleanroommc.airlock.common.vec;
+package com.cleanroommc.airlock.client.vec;
 
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.util.math.Vec3i;

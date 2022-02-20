@@ -1,4 +1,4 @@
-package com.cleanroommc.airlock.common.vec;
+package com.cleanroommc.airlock.client.vec;
 
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;

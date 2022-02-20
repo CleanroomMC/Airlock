@@ -1,4 +1,4 @@
-package com.cleanroommc.airlock.common.vec;
+package com.cleanroommc.airlock.client.vec;
 
 import com.cleanroommc.airlock.common.util.Copyable;
 import net.minecraft.client.renderer.GlStateManager;

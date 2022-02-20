@@ -3,20 +3,14 @@ package com.cleanroommc.airlock;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
-import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.registries.IForgeRegistryEntry;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AirlockAPI {
-
-	public static <T extends IForgeRegistryEntry<T>> T setRegistryName(T type, String modid, String name) {
-		return type.setRegistryName(new ResourceLocation(modid, name));
-	}
 
 	private static List<Block> blocksToRegister = new ArrayList<>();
 	private static List<Item> itemsToRegister = new ArrayList<>();

@@ -1,4 +1,4 @@
-package com.cleanroommc.airlock.common.vec;
+package com.cleanroommc.airlock.client.vec;
 
 public class IrreversibleTransformationException extends RuntimeException {
 
