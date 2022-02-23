@@ -1,16 +1,15 @@
 package com.cleanroommc.airlock.common.item.metaitem;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.*;
@@ -18,18 +17,20 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.text.translation.I18n;
+import net.minecraft.world.GameType;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.IRarity;
-import net.minecraftforge.common.animation.ITimeValue;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.function.IntSupplier;
 
 public class IMetaItemDefinition {
     
@@ -136,7 +137,7 @@ public class IMetaItemDefinition {
      * Checks isDamagable and if it cannot be stacked
      */
     public boolean isEnchantable(ItemStack stack) {
-        return this.getItemStackLimit(stack) == 1 && stack.getItem
+        return this.getItemStackLimit(stack) == 1 && stack.getItem().isDamageable();
     }
 
     /**
@@ -154,7 +155,7 @@ public class IMetaItemDefinition {
      * ItemStack sensitive version of getItemAttributeModifiers
      */
     public Multimap<String, AttributeModifier> getAttributeModifiers(EntityEquipmentSlot slot, ItemStack stack) {
-        return this.getItemAttributeModifiers(slot);
+        return stack.getItem().getItemAttributeModifiers(slot);
     }
 
     /**
@@ -166,8 +167,7 @@ public class IMetaItemDefinition {
      * @param player The player that dropped the item
      * @param item The item stack, before the item is removed.
      */
-    public boolean onDroppedByPlayer(ItemStack item, EntityPlayer player)
-    {
+    public boolean onDroppedByPlayer(ItemStack item, EntityPlayer player) {
         return true;
     }
 
@@ -179,8 +179,7 @@ public class IMetaItemDefinition {
      * @param item the ItemStack for the item.
      * @param displayName the name that will be displayed unless it is changed in this method.
      */
-    public String getHighlightTip(ItemStack item, String displayName)
-    {
+    public String getHighlightTip(ItemStack item, String displayName) {
         return displayName;
     }
 
@@ -194,8 +193,7 @@ public class IMetaItemDefinition {
      * @param hand Which hand the item is being held in.
      * @return Return PASS to allow vanilla handling, any other to skip normal code.
      */
-    public EnumActionResult onItemUseFirst(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand)
-    {
+    public EnumActionResult onItemUseFirst(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand) {
         return EnumActionResult.PASS;
     }
 
@@ -203,8 +201,7 @@ public class IMetaItemDefinition {
      * Determines the amount of durability the mending enchantment
      * will repair, on average, per point of experience.
      */
-    public float getXpRepairRatio(ItemStack stack)
-    {
+    public float getXpRepairRatio(ItemStack stack) {
         return 2f;
     }
 
@@ -223,8 +220,7 @@ public class IMetaItemDefinition {
      * @return The NBT tag
      */
     @Nullable
-    public NBTTagCompound getNBTShareTag(ItemStack stack)
-    {
+    public NBTTagCompound getNBTShareTag(ItemStack stack) {
         return stack.getTagCompound();
     }
 
@@ -234,8 +230,7 @@ public class IMetaItemDefinition {
      * @param stack The stack that received NBT
      * @param nbt Received NBT, can be null
      */
-    public void readNBTShareTag(ItemStack stack, @Nullable NBTTagCompound nbt)
-    {
+    public void readNBTShareTag(ItemStack stack, @Nullable NBTTagCompound nbt) {
         stack.setTagCompound(nbt);
     }
 
@@ -249,8 +244,7 @@ public class IMetaItemDefinition {
      * @param player The Player that is wielding the item
      * @return True to prevent harvesting, false to continue as normal
      */
-    public boolean onBlockStartBreak(ItemStack itemstack, BlockPos pos, EntityPlayer player)
-    {
+    public boolean onBlockStartBreak(ItemStack itemstack, BlockPos pos, EntityPlayer player) {
         return false;
     }
 
@@ -260,9 +254,7 @@ public class IMetaItemDefinition {
      * @param player The Player using the item
      * @param count The amount of time in tick the item has been used for continuously
      */
-    public void onUsingTick(ItemStack stack, EntityLivingBase player, int count)
-    {
-    }
+    public void onUsingTick(ItemStack stack, EntityLivingBase player, int count) { }
 
     /**
      * Called when the player Left Clicks (attacks) an entity.
@@ -274,8 +266,7 @@ public class IMetaItemDefinition {
      * @param entity The entity being attacked
      * @return True to cancel the rest of the interaction.
      */
-    public boolean onLeftClickEntity(ItemStack stack, EntityPlayer player, Entity entity)
-    {
+    public boolean onLeftClickEntity(ItemStack stack, EntityPlayer player, Entity entity) {
         return false;
     }
 
@@ -286,13 +277,11 @@ public class IMetaItemDefinition {
      * @param itemStack The current ItemStack
      * @return The resulting ItemStack
      */
-    public ItemStack getContainerItem(ItemStack itemStack)
-    {
-        if (!hasContainerItem(itemStack))
-        {
+    public ItemStack getContainerItem(ItemStack itemStack) {
+        if (!hasContainerItem(itemStack)) {
             return ItemStack.EMPTY;
         }
-        return new ItemStack(getContainerItem());
+        return new ItemStack(itemStack.getItem().getContainerItem());
     }
 
     /**
@@ -300,9 +289,8 @@ public class IMetaItemDefinition {
      * @param stack The current item stack
      * @return True if this item has a 'container'
      */
-    public boolean hasContainerItem(ItemStack stack)
-    {
-        return hasContainerItem();
+    public boolean hasContainerItem(ItemStack stack) {
+        return stack.getItem().hasContainerItem();
     }
 
     /**
@@ -313,8 +301,7 @@ public class IMetaItemDefinition {
      * @param world The world the entity is in
      * @return The normal lifespan in ticks.
      */
-    public int getEntityLifespan(ItemStack itemStack, World world)
-    {
+    public int getEntityLifespan(ItemStack itemStack, World world) {
         return 6000;
     }
 
@@ -326,8 +313,7 @@ public class IMetaItemDefinition {
      * @param stack The current item stack
      * @return True of the item has a custom entity, If true, Item#createCustomEntity will be called
      */
-    public boolean hasCustomEntity(ItemStack stack)
-    {
+    public boolean hasCustomEntity(ItemStack stack) {
         return false;
     }
 
@@ -342,8 +328,7 @@ public class IMetaItemDefinition {
      * @return A new Entity object to spawn or null
      */
     @Nullable
-    public Entity createEntity(World world, Entity location, ItemStack itemstack)
-    {
+    public Entity createEntity(World world, Entity location, ItemStack itemstack) {
         return null;
     }
 
@@ -354,8 +339,7 @@ public class IMetaItemDefinition {
      * @param entityItem The entity Item
      * @return Return true to skip any further update code.
      */
-    public boolean onEntityItemUpdate(EntityItem entityItem)
-    {
+    public boolean onEntityItemUpdate(EntityItem entityItem) {
         return false;
     }
 
@@ -367,8 +351,7 @@ public class IMetaItemDefinition {
      * @param item The item stack the player is picking up.
      * @return The amount to award for each item.
      */
-    public float getSmeltingExperience(ItemStack item)
-    {
+    public float getSmeltingExperience(ItemStack item) {
         return -1; //-1 will public to the old lookups.
     }
 
@@ -381,8 +364,7 @@ public class IMetaItemDefinition {
      * @param player The Player that is wielding the item
      * @return
      */
-    public boolean doesSneakBypassUse(ItemStack stack, IBlockAccess world, BlockPos pos, EntityPlayer player)
-    {
+    public boolean doesSneakBypassUse(ItemStack stack, IBlockAccess world, BlockPos pos, EntityPlayer player) {
         return false;
     }
 
@@ -393,8 +375,7 @@ public class IMetaItemDefinition {
      * @param book The book
      * @return if the enchantment is allowed
      */
-    public boolean isBookEnchantable(ItemStack stack, ItemStack book)
-    {
+    public boolean isBookEnchantable(ItemStack stack, ItemStack book) {
         return true;
     }
 
@@ -407,8 +388,7 @@ public class IMetaItemDefinition {
      */
     @SideOnly(Side.CLIENT)
     @Nullable
-    public FontRenderer getFontRenderer(ItemStack stack)
-    {
+    public FontRenderer getFontRenderer(ItemStack stack) {
         return null;
     }
 
@@ -419,8 +399,7 @@ public class IMetaItemDefinition {
      * @param stack The Item stack
      * @return True to cancel any further processing by EntityLiving
      */
-    public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack)
-    {
+    public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack) {
         return false;
     }
 
@@ -430,9 +409,8 @@ public class IMetaItemDefinition {
      * @param stack The itemstack that is damaged
      * @return the damage value
      */
-    public int getDamage(ItemStack stack)
-    {
-        return stack.itemDamage;
+    public int getDamage(ItemStack stack, IntSupplier originalGetDamageResult) {
+        return originalGetDamageResult.getAsInt();
     }
 
     /**
@@ -443,8 +421,7 @@ public class IMetaItemDefinition {
      * @param stack The current Item Stack
      * @return True if it should render the 'durability' bar.
      */
-    public boolean showDurabilityBar(ItemStack stack)
-    {
+    public boolean showDurabilityBar(ItemStack stack) {
         return stack.isItemDamaged();
     }
 
@@ -454,8 +431,7 @@ public class IMetaItemDefinition {
      * @param stack The current ItemStack
      * @return 0.0 for 100% (no damage / full bar), 1.0 for 0% (fully damaged / empty bar)
      */
-    public double getDurabilityForDisplay(ItemStack stack)
-    {
+    public double getDurabilityForDisplay(ItemStack stack) {
         return (double)stack.getItemDamage() / (double)stack.getMaxDamage();
     }
 
@@ -466,32 +442,29 @@ public class IMetaItemDefinition {
      * @param stack Stack to get durability from
      * @return A packed RGB value for the durability colour (0x00RRGGBB)
      */
-    public int getRGBDurabilityForDisplay(ItemStack stack)
-    {
+    public int getRGBDurabilityForDisplay(ItemStack stack) {
         return MathHelper.hsvToRGB(Math.max(0.0F, (float) (1.0F - getDurabilityForDisplay(stack))) / 3.0F, 1.0F, 1.0F);
     }
 
     /**
      * Checked from {@link net.minecraft.client.multiplayer.PlayerControllerMP#onPlayerDestroyBlock(BlockPos pos) PlayerControllerMP.onPlayerDestroyBlock()}
      * when a creative player left-clicks a block with this item.
-     * Also checked from {@link net.minecraftforge.common.ForgeHooks#onBlockBreakEvent(World, GameType, EntityPlayerMP, BlockPos)  ForgeHooks.onBlockBreakEvent()}
+     * Also checked from {@link ForgeHooks#onBlockBreakEvent(World, GameType, EntityPlayerMP, BlockPos)}}
      * to prevent sending an event.
      * @return true if the given player can destroy specified block in creative mode with this item
      */
-    public boolean canDestroyBlockInCreative(World world, BlockPos pos, ItemStack stack, EntityPlayer player)
-    {
-        return !(this instanceof ItemSword);
+    public boolean canDestroyBlockInCreative(World world, BlockPos pos, ItemStack stack, EntityPlayer player) {
+        return !(stack.getItem() instanceof ItemSword);
     }
 
     /**
-     * ItemStack sensitive version of {@link #canHarvestBlock(IBlockState)}
+     * ItemStack sensitive version of {@link Item#canHarvestBlock(IBlockState)}
      * @param state The block trying to harvest
      * @param stack The itemstack used to harvest the block
      * @return true if can harvest the block
      */
-    public boolean canHarvestBlock(IBlockState state, ItemStack stack)
-    {
-        return canHarvestBlock(state);
+    public boolean canHarvestBlock(IBlockState state, ItemStack stack) {
+        return stack.getItem().canHarvestBlock(state);
     }
 
     /**
@@ -501,13 +474,12 @@ public class IMetaItemDefinition {
      * @param stack The ItemStack
      * @return The maximum number this item can be stacked to
      */
-    public int getItemStackLimit(ItemStack stack)
-    {
-        return this.getItemStackLimit();
+    public int getItemStackLimit(ItemStack stack) {
+        return stack.getItem().getItemStackLimit();
     }
 
-    public java.util.Set<String> getToolClasses(ItemStack stack) {
-        return toolClasses.keySet();
+    public Set<String> getToolClasses(ItemStack stack) {
+        return Collections.emptySet();
     }
 
     /**
@@ -520,10 +492,8 @@ public class IMetaItemDefinition {
      * @param blockState The block to harvest
      * @return Harvest level, or -1 if not the specified tool type.
      */
-    public int getHarvestLevel(ItemStack stack, String toolClass, @Nullable EntityPlayer player, @Nullable IBlockState blockState)
-    {
-        Integer ret = toolClasses.get(toolClass);
-        return ret == null ? -1 : ret;
+    public int getHarvestLevel(ItemStack stack, String toolClass, @Nullable EntityPlayer player, @Nullable IBlockState blockState) {
+        return -1;
     }
 
     /**
@@ -532,9 +502,8 @@ public class IMetaItemDefinition {
      * @param stack The ItemStack
      * @return the item echantability value
      */
-    public int getItemEnchantability(ItemStack stack)
-    {
-        return getItemEnchantability();
+    public int getItemEnchantability(ItemStack stack) {
+        return stack.getItem().getItemEnchantability();
     }
 
     /**
@@ -545,8 +514,7 @@ public class IMetaItemDefinition {
      * @param enchantment the enchantment to be applied
      * @return true if the enchantment can be applied to this item
      */
-    public boolean canApplyAtEnchantingTable(ItemStack stack, net.minecraft.enchantment.Enchantment enchantment)
-    {
+    public boolean canApplyAtEnchantingTable(ItemStack stack, net.minecraft.enchantment.Enchantment enchantment) {
         return enchantment.type.canEnchantItem(stack.getItem());
     }
 
@@ -555,9 +523,8 @@ public class IMetaItemDefinition {
      * @param stack the ItemStack
      * @return true if this Item can be used
      */
-    public boolean isBeaconPayment(ItemStack stack)
-    {
-        return this == Items.EMERALD || this == Items.DIAMOND || this == Items.GOLD_INGOT || this == Items.IRON_INGOT;
+    public boolean isBeaconPayment(ItemStack stack) {
+        return false;
     }
 
     /**
@@ -569,8 +536,7 @@ public class IMetaItemDefinition {
      *                    slots that hold the exact same item.
      * @return True to play the item change animation
      */
-    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged)
-    {
+    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
         return !oldStack.equals(newStack); //!ItemStack.areItemStacksEqual(oldStack, newStack);
     }
 
@@ -581,8 +547,7 @@ public class IMetaItemDefinition {
      * @param newStack The new stack
      * @return True to reset block break progress
      */
-    public boolean shouldCauseBlockBreakReset(ItemStack oldStack, ItemStack newStack)
-    {
+    public boolean shouldCauseBlockBreakReset(ItemStack oldStack, ItemStack newStack) {
         return !(newStack.getItem() == oldStack.getItem() && ItemStack.areItemStackTagsEqual(newStack, oldStack) && (newStack.isItemStackDamageable() || newStack.getMetadata() == oldStack.getMetadata()));
     }
 
@@ -594,8 +559,7 @@ public class IMetaItemDefinition {
      * @param newStack the stack currently in the active hand
      * @return true to set the new stack to active and continue using it
      */
-    public boolean canContinueUsing(ItemStack oldStack, ItemStack newStack)
-    {
+    public boolean canContinueUsing(ItemStack oldStack, ItemStack newStack) {
         return oldStack.equals(newStack);
     }
 
@@ -611,11 +575,10 @@ public class IMetaItemDefinition {
      *
      * @param itemStack the ItemStack to check
      * @return the Mod ID for the ItemStack, or
-     *         null when there is no specially associated mod and {@link #getRegistryName()} would return null.
+     *         null when there is no specially associated mod and {@link Item#getRegistryName()} would return null.
      */
     @Nullable
-    public String getCreatorModId(ItemStack itemStack)
-    {
+    public String getCreatorModId(ItemStack itemStack) {
         return ForgeHooks.getDefaultCreatorModId(itemStack);
     }
 
@@ -633,20 +596,8 @@ public class IMetaItemDefinition {
      * @return A holder instance associated with this ItemStack where you can hold capabilities for the life of this item.
      */
     @Nullable
-    public ICapabilityProvider initCapabilities(ItemStack stack, @Nullable NBTTagCompound nbt)
-    {
+    public ICapabilityProvider initCapabilities(ItemStack stack, @Nullable NBTTagCompound nbt) {
         return null;
-    }
-
-    public ImmutableMap<String, ITimeValue> getAnimationParameters(final ItemStack stack, final World world, final EntityLivingBase entity)
-    {
-        com.google.common.collect.ImmutableMap.Builder<String, ITimeValue> builder = ImmutableMap.builder();
-        for(ResourceLocation location : properties.getKeys())
-        {
-            final IItemPropertyGetter parameter = properties.getObject(location);
-            builder.put(location.toString(), input -> parameter.apply(stack, world, entity));
-        }
-        return builder.build();
     }
 
     /**
@@ -657,9 +608,8 @@ public class IMetaItemDefinition {
      * @param attacker The EntityLivingBase holding the ItemStack
      * @retrun True if this ItemStack can disable the shield in question.
      */
-    public boolean canDisableShield(ItemStack stack, ItemStack shield, EntityLivingBase entity, EntityLivingBase attacker)
-    {
-        return this instanceof ItemAxe;
+    public boolean canDisableShield(ItemStack stack, ItemStack shield, EntityLivingBase entity, EntityLivingBase attacker) {
+        return false;
     }
 
     /**
@@ -668,8 +618,7 @@ public class IMetaItemDefinition {
      * @param entity The Entity holding the ItemStack
      * @return True if the ItemStack is considered a shield
      */
-    public boolean isShield(ItemStack stack, @Nullable EntityLivingBase entity)
-    {
+    public boolean isShield(ItemStack stack, @Nullable EntityLivingBase entity) {
         return stack.getItem() == Items.SHIELD;
     }
 
@@ -683,7 +632,7 @@ public class IMetaItemDefinition {
     }
 
     public IRarity getForgeRarity(ItemStack stack) {
-        return this.getRarity(stack);
+        return stack.getRarity();
     }
 
 }
