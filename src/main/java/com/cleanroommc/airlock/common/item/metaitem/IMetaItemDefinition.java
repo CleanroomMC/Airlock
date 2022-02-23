@@ -3,10 +3,7 @@ package com.cleanroommc.airlock.common.item.metaitem;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.block.model.ModelBakery;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
@@ -21,281 +18,106 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.text.translation.I18n;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
-import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.IRarity;
 import net.minecraftforge.common.animation.ITimeValue;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import org.apache.commons.lang3.Validate;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> extends Item {
-
-    protected static final ModelResourceLocation MISSING_LOCATION = new ModelResourceLocation("builtin/missing", "inventory");
-
-    private static final List<AirlockMetaItem<?>> META_ITEMS = new ArrayList<>();
-
-    public static List<AirlockMetaItem<?>> getMetaItems() {
-        return Collections.unmodifiableList(META_ITEMS);
-    }
-
-    protected final String domain;
-    protected final short metaItemOffset;
-    protected final ArrayList<T> metaItems = new ArrayList<>(Short.MAX_VALUE);
-    protected final ArrayList<String> metaNames = new ArrayList<>(Short.MAX_VALUE);
-    private final ArrayList<ModelResourceLocation[]> metaItemsModels = new ArrayList<>(Short.MAX_VALUE);
-
-    public AirlockMetaItem(String domain, short metaItemOffset) {
-        this.domain = domain;
-        this.metaItemOffset = metaItemOffset;
-        setTranslationKey("meta_item");
-        setHasSubtypes(true);
-        META_ITEMS.add(this);
-    }
-
-    protected abstract T constructValueItem(short meta, String name);
-
-    public final T addValueItem(short meta, String name) {
-        Validate.inclusiveBetween(0, Short.MAX_VALUE - 1, meta + metaItemOffset, "MetaItem ID should be in range from 0 to Short.MAX_VALUE-1");
-        T currentValueItem = metaItems.get(meta);
-        if (currentValueItem != null) {
-            throw new IllegalArgumentException(String.format("MetaItem Value %d is already occupied by MetaItem Value %s (requested by %s)", meta, currentValueItem.name, name));
-        }
-        T valueItem = constructValueItem(meta, name);
-        metaItems.set(meta, valueItem);
-        metaNames.set(meta, name);
-        return valueItem;
-    }
-
-    public final T getValueItem(short metaValue) {
-        return metaItems.get(metaValue - metaItemOffset);
-    }
-
-    public final T getValueItem(int metaValue) {
-        return metaItems.get(metaValue - metaItemOffset);
-    }
+public class IMetaItemDefinition {
     
-    public final T getValueItem(ItemStack stack) {
-        return metaItems.get(stack.getItemDamage() - metaItemOffset);
+    public static final IMetaItemDefinition DEFAULT = new IMetaItemDefinition();
+
+    /**
+     * Called when a Block is right-clicked with this Item
+     */
+    public EnumActionResult onItemUse(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
+        return EnumActionResult.PASS;
     }
 
-    public final void trim() {
-        this.metaItems.trimToSize();
-        this.metaItemsModels.trimToSize();
-    }
-
-    @SideOnly(Side.CLIENT)
-    public void registerModels() {
-        for (short meta = 0; meta < metaItems.size(); meta++) {
-            T value = metaItems.get(meta);
-            int numberOfModels = value.getModelAmount();
-            ModelResourceLocation[] mrls = new ModelResourceLocation[numberOfModels];
-            if (numberOfModels > 1) {
-                for (int i = 0; i < mrls.length; i++) {
-                    ResourceLocation resourceLocation = createItemModelPath(value, "/" + (i + 1));
-                    ModelBakery.registerItemVariants(this, resourceLocation);
-                    mrls[i] = new ModelResourceLocation(resourceLocation, "inventory");
-                }
-            } else if (numberOfModels == 1) {
-                ResourceLocation mrl = createItemModelPath(value, "");
-                ModelBakery.registerItemVariants(this, mrl);
-                mrls[0] = new ModelResourceLocation(mrl, "inventory");
-            } else {
-                throw new IllegalStateException(String.format("%s's MetaItem with the meta %d has no models!", domain, meta));
-            }
-            metaItemsModels.set(metaItemOffset + meta, mrls);
-        }
-    }
-
-    @SideOnly(Side.CLIENT)
-    public void registerTextureMesh() {
-        ModelLoader.setCustomMeshDefinition(this, stack -> {
-            int value = stack.getItemDamage();
-            if (metaItemsModels.size() < value) {
-                return MISSING_LOCATION;
-            }
-            ModelResourceLocation[] mrls = metaItemsModels.get(stack.getItemDamage());
-            if (mrls == null) {
-                return MISSING_LOCATION;
-            }
-            return mrls[getModelIndex(stack)];
-        });
-    }
-
-    @SideOnly(Side.CLIENT)
-    public void registerColor() {
-        Minecraft.getMinecraft().getItemColors().registerItemColorHandler(this::getColorForItemStack, this);
-    }
-
-    @SideOnly(Side.CLIENT)
-    public ResourceLocation createItemModelPath(T value, String postfix) {
-        return new ResourceLocation(domain, formatModelPath(value) + postfix);
-    }
-
-    @SideOnly(Side.CLIENT)
-    protected String formatModelPath(T value) {
-        return "metaitems/" + value.name;
-    }
-
-    @SideOnly(Side.CLIENT)
-    protected int getModelIndex(ItemStack stack) {
-        return 0;
-    }
-
-    @SideOnly(Side.CLIENT)
-    protected int getColorForItemStack(ItemStack stack, int tintIndex) {
-        return 0xFFFFFF;
-    }
-
-    // Implementations
-    @Override
-    public EnumActionResult onItemUse(EntityPlayer player, World world, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
-        ItemStack stack = player.getHeldItem(hand);
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.onItemUse(stack, player, world, pos, hand, facing, hitX, hitY, hitZ);
-        }
-        return super.onItemUse(player, world, pos, hand, facing, hitX, hitY, hitZ);
-    }
-
-    @Override
     public float getDestroySpeed(ItemStack stack, IBlockState state) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.getDestroySpeed(stack, state);
-        }
-        return super.getDestroySpeed(stack, state);
+        return 1.0F;
     }
 
-    @Override
-    public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer player, EnumHand hand) {
-        ItemStack stack = player.getHeldItem(hand);
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onItemRightClick(stack, world, player, hand);
-        }
-        return super.onItemRightClick(world, player, hand);
+    /**
+     * Called when the equipped item is right clicked.
+     */
+    public ActionResult<ItemStack> onItemRightClick(ItemStack stack, World world, EntityPlayer player, EnumHand hand) {
+        return new ActionResult<>(EnumActionResult.PASS, stack);
     }
 
-    @Override
+    /**
+     * Called when the player finishes using this Item (E.g. finishes eating.). Not called when the player stops using
+     * the Item before the action is complete.
+     */
     public ItemStack onItemUseFinish(ItemStack stack, World world, EntityLivingBase entityLiving) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onItemUseFinish(stack, world, entityLiving);
-        }
-        return super.onItemUseFinish(stack, world, entityLiving);
+        return stack;
     }
 
-    @Override
+    /**
+     * Current implementations of this method in child classes do not use the entry argument beside ev. They just raise
+     * the damage on the stack.
+     */
     public boolean hitEntity(ItemStack stack, EntityLivingBase target, EntityLivingBase attacker) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.hitEntity(stack, target, attacker);
-        }
-        return super.hitEntity(stack, target, attacker);
+        return false;
     }
 
-    @Override
-    public boolean onBlockDestroyed(ItemStack stack, World world, IBlockState state, BlockPos pos, EntityLivingBase entityLiving) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onBlockDestroyed(stack, world, state, pos, entityLiving);
-        }
-        return super.onBlockDestroyed(stack, world, state, pos, entityLiving);
+    /**
+     * Called when a Block is destroyed using this Item. Return true to trigger the "Use Item" statistic.
+     */
+    public boolean onBlockDestroyed(ItemStack stack, World worldIn, IBlockState state, BlockPos pos, EntityLivingBase entityLiving) {
+        return false;
     }
 
-    @Override
+    /**
+     * Returns true if the item can be used on the given entity, e.g. shears on sheep.
+     */
     public boolean itemInteractionForEntity(ItemStack stack, EntityPlayer playerIn, EntityLivingBase target, EnumHand hand) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.itemInteractionForEntity(stack, playerIn, target, hand);
-        }
-        return super.itemInteractionForEntity(stack, playerIn, target, hand);
+        return false;
     }
 
-    @Override
-    public String getTranslationKey(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return "item." + valueItem.name;
-        }
-        return super.getTranslationKey(stack);
-    }
+    /**
+     * Called each tick as long the item is on a player inventory. Uses by maps to check if is on a player hand and
+     * update it's contents.
+     */
+    public void onUpdate(ItemStack stack, World worldIn, Entity entityIn, int itemSlot, boolean isSelected) { }
 
-    @Override
-    public void onUpdate(ItemStack stack, World world, Entity entity, int itemSlot, boolean isSelected) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onUpdate(stack, world, entity, itemSlot, isSelected);
-        } else {
-            super.onUpdate(stack, world, entity, itemSlot, isSelected);
-        }
-    }
-
-    @Override
-    public void onCreated(ItemStack stack, World world, EntityPlayer player) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onCreated(stack, world, player);
-        } else {
-            super.onCreated(stack, world, player);
-        }
-    }
+    /**
+     * Called when item is crafted/smelted. Used only by maps so far.
+     */
+    public void onCreated(ItemStack stack, World worldIn, EntityPlayer playerIn) { }
 
     /**
      * returns the action that specifies what animation to play when the items is being used
      */
     public EnumAction getItemUseAction(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getItemUseAction(stack);
-        }
-        return super.getItemUseAction(stack);
+        return EnumAction.NONE;
     }
 
     /**
      * How long it takes to use or consume an item
      */
     public int getMaxItemUseDuration(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getMaxItemUseDuration(stack);
-        }
-        return super.getMaxItemUseDuration(stack);
+        return 0;
     }
 
     /**
      * Called when the player stops using an Item (stops holding the right mouse button).
      */
-    public void onPlayerStoppedUsing(ItemStack stack, World world, EntityLivingBase entityLiving, int timeLeft) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onPlayerStoppedUsing(stack, world, entityLiving, timeLeft);
-        } else {
-            super.onPlayerStoppedUsing(stack, world, entityLiving, timeLeft);
-        }
-    }
+    public void onPlayerStoppedUsing(ItemStack stack, World worldIn, EntityLivingBase entityLiving, int timeLeft) { }
 
     /**
      * allows items to add custom lines of information to the mouseover description
      */
     @SideOnly(Side.CLIENT)
-    public void addInformation(ItemStack stack, @Nullable World world, List<String> tooltip, ITooltipFlag flag) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.addInformation(stack, world, tooltip, flag);
-        } else {
-            super.addInformation(stack, world, tooltip, flag);
-        }
-    }
+    public void addInformation(ItemStack stack, @Nullable World worldIn, List<String> tooltip, ITooltipFlag flagIn) { }
 
     /**
      * Returns true if this item has an enchantment glint. By default, this returns
@@ -307,29 +129,14 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      */
     @SideOnly(Side.CLIENT)
     public boolean hasEffect(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.hasEffect(stack);
-        }
-        return super.hasEffect(stack);
+        return stack.isItemEnchanted();
     }
 
     /**
      * Checks isDamagable and if it cannot be stacked
      */
     public boolean isEnchantable(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.isEnchantable(stack);
-        }
-        return super.isEnchantable(stack);
-    }
-
-    /**
-     * returns a list of items with the same ID, but different meta (eg: dye returns 16 items)
-     */
-    public void getSubItems(CreativeTabs tab, NonNullList<ItemStack> items) {
-        // TODO:
+        return this.getItemStackLimit(stack) == 1 && stack.getItem
     }
 
     /**
@@ -339,11 +146,7 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param repair the {@code ItemStack} being used to perform the repair
      */
     public boolean getIsRepairable(ItemStack toRepair, ItemStack repair) {
-        T valueItem = getValueItem(toRepair.getItemDamage());
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getIsRepairable(toRepair, repair);
-        }
-        return super.getIsRepairable(toRepair, repair);
+        return false;
     }
 
     /* ======================================== FORGE START =====================================*/
@@ -351,11 +154,7 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * ItemStack sensitive version of getItemAttributeModifiers
      */
     public Multimap<String, AttributeModifier> getAttributeModifiers(EntityEquipmentSlot slot, ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getAttributeModifiers(slot, stack);
-        }
-        return super.getAttributeModifiers(slot, stack);
+        return this.getItemAttributeModifiers(slot);
     }
 
     /**
@@ -367,12 +166,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param player The player that dropped the item
      * @param item The item stack, before the item is removed.
      */
-    public boolean onDroppedByPlayer(ItemStack item, EntityPlayer player) {
-        T valueItem = getValueItem(item.getItemDamage());
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.onDroppedByPlayer(item, player);
-        }
-        return super.onDroppedByPlayer(item, player);
+    public boolean onDroppedByPlayer(ItemStack item, EntityPlayer player)
+    {
+        return true;
     }
 
     /**
@@ -383,12 +179,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param item the ItemStack for the item.
      * @param displayName the name that will be displayed unless it is changed in this method.
      */
-    public String getHighlightTip(ItemStack item, String displayName) {
-        T valueItem = getValueItem(item.getItemDamage());
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getHighlightTip(item, displayName);
-        }
-        return super.getHighlightTip(item, displayName);
+    public String getHighlightTip(ItemStack item, String displayName)
+    {
+        return displayName;
     }
 
     /**
@@ -401,24 +194,18 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param hand Which hand the item is being held in.
      * @return Return PASS to allow vanilla handling, any other to skip normal code.
      */
-    public EnumActionResult onItemUseFirst(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.onItemUseFirst(stack, player, world, pos, side, hitX, hitY, hitZ, hand);
-        }
-        return super.onItemUseFirst(player, world, pos, side, hitX, hitY, hitZ, hand);
+    public EnumActionResult onItemUseFirst(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand)
+    {
+        return EnumActionResult.PASS;
     }
 
     /**
      * Determines the amount of durability the mending enchantment
      * will repair, on average, per point of experience.
      */
-    public float getXpRepairRatio(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getXpRepairRatio(stack);
-        }
-        return super.getXpRepairRatio(stack);
+    public float getXpRepairRatio(ItemStack stack)
+    {
+        return 2f;
     }
 
     /**
@@ -436,12 +223,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @return The NBT tag
      */
     @Nullable
-    public NBTTagCompound getNBTShareTag(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getNBTShareTag(stack);
-        }
-        return super.getNBTShareTag(stack);
+    public NBTTagCompound getNBTShareTag(ItemStack stack)
+    {
+        return stack.getTagCompound();
     }
 
     /**
@@ -450,13 +234,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param stack The stack that received NBT
      * @param nbt Received NBT, can be null
      */
-    public void readNBTShareTag(ItemStack stack, @Nullable NBTTagCompound nbt) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.readNBTShareTag(stack, nbt);
-        } else {
-            super.readNBTShareTag(stack, nbt);
-        }
+    public void readNBTShareTag(ItemStack stack, @Nullable NBTTagCompound nbt)
+    {
+        stack.setTagCompound(nbt);
     }
 
     /**
@@ -469,12 +249,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param player The Player that is wielding the item
      * @return True to prevent harvesting, false to continue as normal
      */
-    public boolean onBlockStartBreak(ItemStack itemstack, BlockPos pos, EntityPlayer player) {
-        T valueItem = getValueItem(itemstack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.onBlockStartBreak(itemstack, pos, player);
-        }
-        return super.onBlockStartBreak(itemstack, pos, player);
+    public boolean onBlockStartBreak(ItemStack itemstack, BlockPos pos, EntityPlayer player)
+    {
+        return false;
     }
 
     /**
@@ -483,13 +260,8 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param player The Player using the item
      * @param count The amount of time in tick the item has been used for continuously
      */
-    public void onUsingTick(ItemStack stack, EntityLivingBase player, int count) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            valueItem.metaItemDefinition.onUsingTick(stack, player, count);
-        } else {
-            super.onUsingTick(stack, player, count);
-        }
+    public void onUsingTick(ItemStack stack, EntityLivingBase player, int count)
+    {
     }
 
     /**
@@ -502,12 +274,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param entity The entity being attacked
      * @return True to cancel the rest of the interaction.
      */
-    public boolean onLeftClickEntity(ItemStack stack, EntityPlayer player, Entity entity) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.onLeftClickEntity(stack, player, entity);
-        }
-        return super.onLeftClickEntity(stack, player, entity);
+    public boolean onLeftClickEntity(ItemStack stack, EntityPlayer player, Entity entity)
+    {
+        return false;
     }
 
     /**
@@ -517,12 +286,13 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param itemStack The current ItemStack
      * @return The resulting ItemStack
      */
-    public ItemStack getContainerItem(ItemStack itemStack) {
-        T valueItem = getValueItem(itemStack.getItemDamage());
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getContainerItem(itemStack);
+    public ItemStack getContainerItem(ItemStack itemStack)
+    {
+        if (!hasContainerItem(itemStack))
+        {
+            return ItemStack.EMPTY;
         }
-        return super.getContainerItem(itemStack);
+        return new ItemStack(getContainerItem());
     }
 
     /**
@@ -530,12 +300,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param stack The current item stack
      * @return True if this item has a 'container'
      */
-    public boolean hasContainerItem(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.hasContainerItem(stack);
-        }
-        return super.hasContainerItem(stack);
+    public boolean hasContainerItem(ItemStack stack)
+    {
+        return hasContainerItem();
     }
 
     /**
@@ -546,12 +313,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param world The world the entity is in
      * @return The normal lifespan in ticks.
      */
-    public int getEntityLifespan(ItemStack itemStack, World world) {
-        T valueItem = getValueItem(itemStack.getItemDamage());
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getEntityLifespan(itemStack, world);
-        }
-        return super.getEntityLifespan(itemStack, world);
+    public int getEntityLifespan(ItemStack itemStack, World world)
+    {
+        return 6000;
     }
 
     /**
@@ -562,12 +326,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param stack The current item stack
      * @return True of the item has a custom entity, If true, Item#createCustomEntity will be called
      */
-    public boolean hasCustomEntity(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.hasCustomEntity(stack);
-        }
-        return super.hasCustomEntity(stack);
+    public boolean hasCustomEntity(ItemStack stack)
+    {
+        return false;
     }
 
     /**
@@ -581,12 +342,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @return A new Entity object to spawn or null
      */
     @Nullable
-    public Entity createEntity(World world, Entity location, ItemStack itemstack) {
-        T valueItem = getValueItem(itemstack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.createEntity(world, location, itemstack);
-        }
-        return super.createEntity(world, location, itemstack);
+    public Entity createEntity(World world, Entity location, ItemStack itemstack)
+    {
+        return null;
     }
 
     /**
@@ -596,12 +354,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param entityItem The entity Item
      * @return Return true to skip any further update code.
      */
-    public boolean onEntityItemUpdate(EntityItem entityItem) {
-        T valueItem = getValueItem(entityItem.getItem());
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.onEntityItemUpdate(entityItem);
-        }
-        return super.onEntityItemUpdate(entityItem);
+    public boolean onEntityItemUpdate(EntityItem entityItem)
+    {
+        return false;
     }
 
     /**
@@ -612,12 +367,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param item The item stack the player is picking up.
      * @return The amount to award for each item.
      */
-    public float getSmeltingExperience(ItemStack item) {
-        T valueItem = getValueItem(item);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.getSmeltingExperience(item);
-        }
-        return super.getSmeltingExperience(item);
+    public float getSmeltingExperience(ItemStack item)
+    {
+        return -1; //-1 will public to the old lookups.
     }
 
     /**
@@ -629,12 +381,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param player The Player that is wielding the item
      * @return
      */
-    public boolean doesSneakBypassUse(ItemStack stack, IBlockAccess world, BlockPos pos, EntityPlayer player) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.doesSneakBypassUse(stack, world, pos, player);
-        }
-        return super.doesSneakBypassUse(stack, world, pos, player);
+    public boolean doesSneakBypassUse(ItemStack stack, IBlockAccess world, BlockPos pos, EntityPlayer player)
+    {
+        return false;
     }
 
     /**
@@ -644,12 +393,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param book The book
      * @return if the enchantment is allowed
      */
-    public boolean isBookEnchantable(ItemStack stack, ItemStack book) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return valueItem.metaItemDefinition.isBookEnchantable(stack, book);
-        }
-        return super.isBookEnchantable(stack, book);
+    public boolean isBookEnchantable(ItemStack stack, ItemStack book)
+    {
+        return true;
     }
 
     /**
@@ -661,7 +407,8 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      */
     @SideOnly(Side.CLIENT)
     @Nullable
-    public FontRenderer getFontRenderer(ItemStack stack) {
+    public FontRenderer getFontRenderer(ItemStack stack)
+    {
         return null;
     }
 
@@ -672,7 +419,8 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
      * @param stack The Item stack
      * @return True to cancel any further processing by EntityLiving
      */
-    public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack) {
+    public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack)
+    {
         return false;
     }
 
@@ -934,25 +682,8 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
         return -1;
     }
 
-    @Override
     public IRarity getForgeRarity(ItemStack stack) {
-        T valueItem = getValueItem(stack);
-        if (valueItem != null) {
-            return this.getForgeRarity(stack);
-        }
-        return super.getForgeRarity(stack);
+        return this.getRarity(stack);
     }
-
-    public static class MetaValue {
-
-        protected String name;
-        protected IMetaItemDefinition metaItemDefinition = IMetaItemDefinition.DEFAULT;
-
-        public int getModelAmount() {
-            return 1;
-        }
-
-    }
-
 
 }
