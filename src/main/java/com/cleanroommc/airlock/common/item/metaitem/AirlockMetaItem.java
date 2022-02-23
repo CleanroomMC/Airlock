@@ -28,6 +28,7 @@ import net.minecraftforge.common.IRarity;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Validate;
 
 import javax.annotation.Nullable;
@@ -993,18 +994,52 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
         static final CreativeTabs[] defaultCreativeTabs = new CreativeTabs[] { CreativeTabs.MISC };
 
         public final int meta;
+        public final String name;
 
-        protected String name;
         protected CreativeTabs[] creativeTabs = defaultCreativeTabs;
         protected boolean hidden = false;
         protected IMetaItemDefinition metaItemDefinition = IMetaItemDefinition.DEFAULT;
+        protected int models = 1;
 
-        public MetaValue(int meta) {
+        public MetaValue(int meta, String name) {
             this.meta = meta;
+            this.name = name;
+        }
+
+        public MetaValue creativeTab(CreativeTabs creativeTab) {
+            this.creativeTabs = ArrayUtils.add(this.creativeTabs, creativeTab);
+            return this;
+        }
+
+        public MetaValue hide() {
+            this.hidden = true;
+            return this;
+        }
+
+        public MetaValue define(IMetaItemDefinition metaItemDefinition) {
+            this.metaItemDefinition = metaItemDefinition;
+            return this;
+        }
+
+        public MetaValue models(int models) {
+            this.models = models;
+            return this;
+        }
+
+        public CreativeTabs[] getCreativeTabs() {
+            return creativeTabs;
+        }
+
+        public boolean isHidden() {
+            return hidden;
+        }
+
+        public IMetaItemDefinition getMetaItemDefinition() {
+            return metaItemDefinition;
         }
 
         public int getModelAmount() {
-            return 1;
+            return models;
         }
 
     }
