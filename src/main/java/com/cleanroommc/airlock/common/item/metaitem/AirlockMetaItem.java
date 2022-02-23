@@ -94,7 +94,7 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
     public void registerModels() {
         for (short meta = 0; meta < metaItems.size(); meta++) {
             T value = metaItems.get(meta);
-            int numberOfModels = value.getModelAmount();
+            int numberOfModels = value.models;
             ModelResourceLocation[] mrls = new ModelResourceLocation[numberOfModels];
             if (numberOfModels > 1) {
                 for (int i = 0; i < mrls.length; i++) {
@@ -770,7 +770,10 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
     public int getItemStackLimit(ItemStack stack) {
         T valueItem = getValueItem(stack);
         if (valueItem != null) {
-            return valueItem.metaItemDefinition.getItemStackLimit(stack);
+            if (valueItem.maxStackSize == 64) {
+                return valueItem.metaItemDefinition.getItemStackLimit(stack);
+            }
+            return valueItem.maxStackSize;
         }
         return super.getItemStackLimit(stack);
     }
@@ -996,6 +999,7 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
         public final int meta;
         public final String name;
 
+        protected int maxStackSize = 64;
         protected CreativeTabs[] creativeTabs = defaultCreativeTabs;
         protected boolean hidden = false;
         protected IMetaItemDefinition metaItemDefinition = IMetaItemDefinition.DEFAULT;
@@ -1004,6 +1008,11 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
         public MetaValue(int meta, String name) {
             this.meta = meta;
             this.name = name;
+        }
+
+        public MetaValue maxStackSize(int maxStackSize) {
+            this.maxStackSize = maxStackSize;
+            return this;
         }
 
         public MetaValue creativeTab(CreativeTabs creativeTab) {
