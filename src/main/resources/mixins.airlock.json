@@ -5,7 +5,5 @@
 	"minVersion": "0.8",
 	"compatibilityLevel": "JAVA_8",
 	"mixins": [
-      "block.mixins.BlockMixin",
-      "block.mixins.BlockStateContainerMixin"
 	]
 }

@@ -1,10 +1,12 @@
 package com.cleanroommc.airlock.common.entity;
 
+import io.netty.util.internal.UnstableApi;
 import net.minecraft.block.state.IBlockState;
 import net.minecraftforge.registries.IForgeRegistryEntry;
 
 import java.util.Set;
 
+@UnstableApi
 public class PointOfInterest extends IForgeRegistryEntry.Impl<PointOfInterest> {
 
 	private final Set<IBlockState> matchingStates;
