@@ -1,7 +1,6 @@
 package com.cleanroommc.airlock.common.util;
 
 import net.minecraft.world.World;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.relauncher.FMLLaunchHandler;
 
 /**
