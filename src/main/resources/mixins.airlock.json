@@ -1,5 +1,5 @@
 {
-	"package": "com.cleanroommc.airlock.common",
+	"package": "com.cleanroommc.airlock.mixins",
 	"refmap": "mixins.airlock.refmap.json",
 	"target": "@env(DEFAULT)",
 	"minVersion": "0.8",

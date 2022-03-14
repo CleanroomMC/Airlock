@@ -1,4 +1,4 @@
-package com.cleanroommc.airlock.common.core;
+package com.cleanroommc.airlock.core;
 
 import net.minecraft.launchwrapper.IClassTransformer;
 
