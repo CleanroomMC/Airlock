@@ -57,11 +57,10 @@ public abstract class MetaItem<S extends MetaItem<S, V>, V extends MetaValueItem
     public static void registerItems(Register<Item> event) {
         getMetaItems().forEach(ami -> {
             ami.addValueItems();
-            event.getRegistry().register(ami);
             ami.trimAndFreeze();
+            event.getRegistry().register(ami);
         });
     }
-
 
     @SubscribeEvent
     @SideOnly(Side.CLIENT)
@@ -1064,11 +1063,11 @@ public abstract class MetaItem<S extends MetaItem<S, V>, V extends MetaValueItem
         for (int i = this.metaItems.length - 1; i > 0; i--) {
             V metaItem = this.metaItems[i];
             if (metaItem != null) {
-                return;
+                break;
             }
             stripFrom = i;
         }
-        if (stripFrom++ != -1) {
+        if (stripFrom != -1) {
             this.metaItems = Arrays.copyOf(this.metaItems, stripFrom);
             this.metaNames = Arrays.copyOf(this.metaNames, stripFrom);
             this.metaItemsModels = Arrays.copyOf(this.metaItemsModels, stripFrom);
