@@ -1,6 +1,7 @@
 package com.cleanroommc.airlock.common.item.metaitem;
 
 import com.google.common.collect.Multimap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -32,10 +33,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Validate;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> extends Item {
 
@@ -48,15 +46,25 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
     }
 
     protected final String domain;
+    protected final String baseId;
     protected final ArrayList<T> metaItems = new ArrayList<>(Short.MAX_VALUE);
     protected final ArrayList<String> metaNames = new ArrayList<>(Short.MAX_VALUE);
     private final ArrayList<ModelResourceLocation[]> metaItemsModels = new ArrayList<>(Short.MAX_VALUE);
 
-    public AirlockMetaItem(String domain) {
+    public AirlockMetaItem(String domain, String baseId) {
         this.domain = domain;
-        setTranslationKey("meta_item");
+        this.baseId = baseId;
+        setTranslationKey(baseId);
         setHasSubtypes(true);
         META_ITEMS.add(this);
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public String getBaseId() {
+        return baseId;
     }
 
     protected abstract T constructValueItem(short meta, String name);
@@ -68,6 +76,7 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
             throw new IllegalArgumentException(String.format("MetaItem Value %d is already occupied by MetaItem Value %s (requested by %s)", meta, currentValueItem.name, name));
         }
         T valueItem = constructValueItem(meta, name);
+        valueItem.onAdded(this);
         metaItems.set(meta, valueItem);
         metaNames.set(meta, name);
         return valueItem;
@@ -1004,10 +1013,15 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
         protected boolean hidden = false;
         protected IMetaItemDefinition metaItemDefinition = IMetaItemDefinition.DEFAULT;
         protected int models = 1;
+        protected Map<ResourceLocation, IItemPropertyGetter> propertyGetters;
 
         public MetaValue(int meta, String name) {
             this.meta = meta;
             this.name = name;
+        }
+
+        public void onAdded(AirlockMetaItem<?> item) {
+            propertyGetters.forEach(item::addPropertyOverride);
         }
 
         public MetaValue maxStackSize(int maxStackSize) {
@@ -1032,6 +1046,19 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
 
         public MetaValue models(int models) {
             this.models = models;
+            return this;
+        }
+
+        public MetaValue property(ResourceLocation location, IItemPropertyGetter getter) {
+            if (this.propertyGetters == null) {
+                this.propertyGetters = new Object2ObjectArrayMap<>(1);
+            }
+            this.propertyGetters.put(location, (stack, world, entity) -> {
+                if (stack.getMetadata() == this.meta) {
+                    return getter.apply(stack, world, entity);
+                }
+                return 0.0F;
+            });
             return this;
         }
 
