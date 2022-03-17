@@ -32,9 +32,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.IntSupplier;
 
-public class IMetaItemDefinition {
+public class MetaItemDefinition {
     
-    public static final IMetaItemDefinition DEFAULT = new IMetaItemDefinition();
+    public static final MetaItemDefinition DEFAULT = new MetaItemDefinition();
 
     /**
      * Called when a Block is right-clicked with this Item
