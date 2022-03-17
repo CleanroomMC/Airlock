@@ -47,9 +47,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
 
     protected final String domain;
     protected final String baseId;
-    protected final ArrayList<T> metaItems = new ArrayList<>(Short.MAX_VALUE);
-    protected final ArrayList<String> metaNames = new ArrayList<>(Short.MAX_VALUE);
-    private final ArrayList<ModelResourceLocation[]> metaItemsModels = new ArrayList<>(Short.MAX_VALUE);
+    protected final ArrayList<T> metaItems = new ArrayList<>();
+    protected final ArrayList<String> metaNames = new ArrayList<>();
+    private final ArrayList<ModelResourceLocation[]> metaItemsModels = new ArrayList<>();
 
     public AirlockMetaItem(String domain, String baseId) {
         this.domain = domain;
@@ -77,7 +77,9 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
         }
         T valueItem = constructValueItem(meta, name);
         valueItem.onAdded(this);
+        metaItems.ensureCapacity(meta);
         metaItems.set(meta, valueItem);
+        metaNames.ensureCapacity(meta);
         metaNames.set(meta, name);
         return valueItem;
     }
@@ -92,11 +94,6 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
     
     public final T getValueItem(ItemStack stack) {
         return metaItems.get(stack.getItemDamage());
-    }
-
-    public final void trim() {
-        this.metaItems.trimToSize();
-        this.metaItemsModels.trimToSize();
     }
 
     @SideOnly(Side.CLIENT)
@@ -118,6 +115,7 @@ public abstract class AirlockMetaItem<T extends AirlockMetaItem.MetaValue> exten
             } else {
                 throw new IllegalStateException(String.format("%s's MetaItem with the meta %d has no models!", domain, meta));
             }
+            metaItemsModels.ensureCapacity(meta);
             metaItemsModels.set(meta, mrls);
         }
     }
