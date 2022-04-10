@@ -1,9 +1,10 @@
 {
-	"package": "com.cleanroommc.airlock.mixins",
-	"refmap": "mixins.airlock.refmap.json",
-	"target": "@env(DEFAULT)",
-	"minVersion": "0.8",
-	"compatibilityLevel": "JAVA_8",
-	"mixins": [
-	]
+  "package": "com.cleanroommc.airlock.core.mixins",
+  "refmap": "mixins.airlock.refmap.json",
+  "target": "@env(DEFAULT)",
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "ItemStackMixin"
+  ]
 }
